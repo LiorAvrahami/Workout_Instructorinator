@@ -1,22 +1,23 @@
 from read_instructions_file import *
 from gtts import gTTS
 import os
-from scipy.io.wavfile import read, write
+import scipy.io.wavfile as wf
 import numpy as np
+from music_dispenser import MusicDispenser, WAV_SAMPLE_RATE
 
-bin_delta_time_sec = 1 / 16000
+bin_delta_time_sec = 1 / WAV_SAMPLE_RATE
 
 
 def generate_audio_signal_from_text(text):
     tts = gTTS(text, lang='en')
     tts.save('temp.mp3')
-    os.system("ffmpeg -y -i temp.mp3 -ar 16000 -ac 1 temp.wav")
-    a = read("temp.wav")
+    os.system(f"ffmpeg -y -i temp.mp3 -ar {WAV_SAMPLE_RATE} temp.wav")
+    a = wf.read("temp.wav")
     v = np.array(a[1], dtype=np.int16)
-    return v
+    return np.vstack([v, v]).T
 
 
-def generate_audio_file():
+def generate_audio_file(music_dispenser: MusicDispenser):
     audio_arrays = []
     instructions_list = read_instructions_file()
     for line in instructions_list:
@@ -25,13 +26,14 @@ def generate_audio_file():
             audio_arrays.append(v)
         elif type(line) == WaitLine:
             num_bins = int(line.time_seconds / bin_delta_time_sec)
-            audio_arrays.append(np.zeros(num_bins,dtype=np.int16))
+            v = music_dispenser.get_music_signal(num_bins)
+            audio_arrays.append(v)
         else:
             raise Exception("unexpected code path")
-        
-    write("out.wav",16000,np.concatenate(audio_arrays))
-        
-    
+
+    wf.write("out.wav", WAV_SAMPLE_RATE, np.concatenate(audio_arrays))
 
 
-generate_audio_file()
+music_dispenser = MusicDispenser()
+music_dispenser.init_from_path("11 - Burnin' For You.mp3")
+generate_audio_file(music_dispenser)
