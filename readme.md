@@ -2,6 +2,10 @@
 
 this project creates an audio file with a set of verbal instructions separated by given time gaps.
 also the instructor can count down to the next instruction, and background music can be added.
+## requirments
+- ffmpeg should run from your command line
+- scipy, numpy
+- works for me on python 3.10.1
 
 ## Instructions File
 
