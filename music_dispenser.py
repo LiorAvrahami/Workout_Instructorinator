@@ -30,8 +30,8 @@ class MusicDispenser:
     def __init_from_dir(self, path: str):
         musics = os.listdir(path)
         for p in musics:
-            convert_file_to_wav(p)
-        musics = [p for p in os.listdir(path) if ".wav" in p]
+            convert_file_to_wav(os.path.join(path,p))
+        musics = [os.path.join(path,p) for p in os.listdir(path) if ".wav" in p]
         self.music_file_iter = itertools.cycle(musics)
 
     def __init_from_file(self, path: str):

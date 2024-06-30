@@ -35,5 +35,10 @@ def generate_audio_file(music_dispenser: MusicDispenser):
 
 
 music_dispenser = MusicDispenser()
-music_dispenser.init_from_path("11 - Burnin' For You.mp3")
+try:
+    import efipy
+    music_path = efipy.inquire_input_path("enter background music path:")
+    music_dispenser.init_from_path(music_path)
+except:
+    music_path = input("enter background music path:")
 generate_audio_file(music_dispenser)

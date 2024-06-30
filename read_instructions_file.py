@@ -22,6 +22,8 @@ def read_instructions_file() -> list[InstructionLine]:
     instructions_list = []
     is_text_line = True
     for line in lines:
+        if line[0] == "#":
+            continue
         if is_text_line:
             instruction = TextLine()
             instruction.text = line
