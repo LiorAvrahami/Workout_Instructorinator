@@ -1,7 +1,7 @@
 # Workout Instructor-Inator
 
-this project creates an audio file with a set of verbal instructions separated by given time gaps.
-also the instructor can count down to the next instruction, and background music can be added.
+this tool recives a text file, and creates an audio file with a set of verbal instructions separated by given time gaps.
+also the instructor can count down to the next instruction, and background music is mixed in smoothly.
 ## requirments
 - ffmpeg should run from your command line
 - scipy, numpy, and gTTs packages
