@@ -11,14 +11,14 @@ also the instructor can count down to the next instruction, and background music
 
 ## Instructions File
 
-in order for the instructions audio file to be generated, a text file with the requested instructions should be provided. the files name has to be "instructions.txt", and it should simply exists in the present working directory. the format for this file is comprised of lines, (separated by line breaks). the lines alternate between being verbal instructions, and parameters for the waiting period between instructions. the parameters line starts with the duration of the waiting period in MINUETS:SECONDS, then a comma, and then you may add keywords for this waiting period.
+in order for the instructions audio file to be generated, a text file with the requested instructions should be provided. the files name has to be "instructions.txt", and it should simply exists in the present working directory. the format for this file is comprised of lines, (separated by line breaks). the lines alternate between being verbal instructions, and parameters for the waiting period between instructions. the parameters line starts with the duration of the waiting period in MINUTES:SECONDS, then a comma, and then you may add keywords for this waiting period.
 the file looks like this:
 
 ```text
 instructions text to be read
-time to wait MINUETS:SECONDS, keywords separated by comma
+time to wait MINUTES:SECONDS, keywords separated by comma
 instructions text to be read
-time to wait MINUETS:SECONDS, keywords separated by comma
+time to wait MINUTES:SECONDS, keywords separated by comma
 ...
 ```
 
@@ -31,13 +31,13 @@ here is an example for the beginning of some workout
 ```text
 Lets get started with our workout.
 0:02
-get into a forearm plank for one and a half minuets
+get into a forearm plank for one and a half minutes
 1:30, countdown
 do 20 pushups and then rest
 1:15
 do 40 squats
 1:00
-do a v-sit for two minuets
+do a v-sit for two minutes
 2:00, countdown
 ```
 

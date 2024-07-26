@@ -7,6 +7,7 @@ from music_dispenser import MusicDispenser, WAV_SAMPLE_RATE, normalize_audio
 
 bin_delta_time_sec = 1 / WAV_SAMPLE_RATE
 
+
 def generate_audio_signal_from_text(text):
     tts = gTTS(text, lang='en')
     tts.save('temp.mp3')
@@ -38,7 +39,7 @@ def generate_audio_file(music_dispenser: MusicDispenser):
 music_dispenser = MusicDispenser()
 try:
     import efipy
-    music_path = efipy.inquire_input_path("enter background music path:")
+    music_path = efipy.inquire_input_path("enter background music path:", default="songs")
     music_dispenser.init_from_path(music_path)
 except:
     music_path = input("enter background music path:")
