@@ -41,7 +41,8 @@ def read_instructions_file() -> list[InstructionLine]:
             instructions_list.append(instruction)
             is_text_line = not is_text_line
         except Exception as e:
-            raise Exception(f"problem with line {line[:-1]}. line number is {line_index}.\n Exception was {e.with_traceback()}")
+            tb = e.__traceback__
+            raise Exception(f"problem with line {line[:-1]}. line number is {line_index}.\n Exception was {e.with_traceback(tb)}")
     apply_preliminary_keywords(instructions_list)
     # remove empty waits
     instructions_list = [line for line in instructions_list if (type(line) != WaitLine or line.time_seconds != 0)]

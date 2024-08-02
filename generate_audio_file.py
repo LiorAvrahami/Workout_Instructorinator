@@ -43,4 +43,8 @@ try:
     music_dispenser.init_from_path(music_path)
 except:
     music_path = input("enter background music path:")
-generate_audio_file(music_dispenser)
+try:
+    generate_audio_file(music_dispenser)
+except Exception as e:
+    print(e.with_traceback(e.__traceback__))
+    input()
