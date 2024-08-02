@@ -3,10 +3,9 @@ from gtts import gTTS
 import os
 import scipy.io.wavfile as wf
 import numpy as np
-from music_dispenser import MusicDispenser, WAV_SAMPLE_RATE, normalize_audio
+from music_dispenser import MusicDispenser, WAV_SAMPLE_RATE, normalize_audio, add_repcount_beeps_to_music
 
 bin_delta_time_sec = 1 / WAV_SAMPLE_RATE
-
 
 def generate_audio_signal_from_text(text):
     tts = gTTS(text, lang='en')
@@ -15,7 +14,7 @@ def generate_audio_signal_from_text(text):
     a = wf.read("temp.wav")
     v = np.array(a[1], dtype=np.int16)
     v = normalize_audio(v)
-    return np.vstack([v, v]).T
+    return np.vstack([v, v]).T 
 
 
 def generate_audio_file(music_dispenser: MusicDispenser):
@@ -26,8 +25,11 @@ def generate_audio_file(music_dispenser: MusicDispenser):
             v = generate_audio_signal_from_text(line.text)
             audio_arrays.append(v)
         elif type(line) == WaitLine:
-            num_bins = int(line.time_seconds / bin_delta_time_sec)
+            audio_time = line.time_seconds + line.delaybeep
+            num_bins = int(audio_time / bin_delta_time_sec)
             v = music_dispenser.get_smooth_music_signal(num_bins)
+            if line.b_beepreps or line.delaybeep >= 0:
+                v = add_repcount_beeps_to_music(v,,)
             audio_arrays.append(v)
         else:
             raise Exception("unexpected code path")

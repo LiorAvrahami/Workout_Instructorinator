@@ -15,6 +15,7 @@ def convert_file_to_wav(path):
     os.system(f"ffmpeg -y -i \"{path}\" -ar {WAV_SAMPLE_RATE} \"{path_name}.wav\"")
     return f"{path_name}.wav"
 
+def add_repcount_beeps_to_music(music_data,number_of_beeps,initial_delaybeep):
 
 def normalize_audio(data):
     try:
