@@ -12,6 +12,9 @@ class TextLine(InstructionLine):
 class WaitLine(InstructionLine):
     time_seconds: float
     b_countdown: bool
+    b_beepreps: bool # whether or not to indicate repetitions with beeps
+    b_announce_time: bool
+    delaybeep: float = -1
 
 
 def read_instructions_file() -> list[InstructionLine]:
@@ -37,7 +40,14 @@ def read_instructions_file() -> list[InstructionLine]:
                 min = float(min)
                 sec = float(sec)
                 instruction.time_seconds = min * 60 + sec
-                instruction.b_countdown = any(["countdown" in a for a in args])
+                instruction.b_countdown = "countdown" in args
+                instruction.b_beepreps = "beepreps" in args
+                instruction.b_announce_time = any(["announce_time" in a for a in args])
+                if any(["delaybeep" in a for a in args]):
+                    delay_index = args.index("delaybeep")
+                    instruction.delaybeep=float(args[delay_index+1])
+                else:
+                    instruction.delaybeep = -1
             instructions_list.append(instruction)
             is_text_line = not is_text_line
         except Exception as e:
