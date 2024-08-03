@@ -55,4 +55,4 @@ do a v-sit for two minutes
 
 ## background music
 
-when the program is run, it will ask you whether you want background music. if you answer yes, it will as you to supply some background music file
+when the program is run, it will ask you to supply some background music folder
