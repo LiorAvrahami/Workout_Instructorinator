@@ -48,10 +48,10 @@ do a v-sit for two minutes
 
 ## keywords
 
-- announce_time: the instructor announces the length of the current wait-line before starting
-- countdown: the instructor start's by announcing the total time, like with "announce_time". then every whole minute before the end, the instructor announces how much time is left. also it announces it 30 minuets and 10 minuets before the end. also the code checks and makes sure that no too announcements are too close together. (if they are then they are not done. for example if total time is 20 seconds, then the 10 second mark will not be announced)
-- beepreps: search the last line for a number, denote it N. then divide the given time into N repetitions and beep at the end of each repetition.
-- delaybeep: after this keyword, a number argument must follow denote the number T. the waitline will wait T seconds, beep, and then will wait the amount of time that was given as the first argument.
+- ```announce_time```: the instructor announces the length of the current wait-line before starting
+- ```countdown```: the instructor start's by announcing the total time, like with "announce_time". then every whole minute before the end, the instructor announces how much time is left. also it announces it 30 seconds and 10 seconds before the end. also the code checks and makes sure that no too announcements are too close together. (if they are then they are not done. for example if total time is 20 seconds, then the 10 second mark will not be announced)
+- ```beepreps```: search the last line for a number, denote it N. then divide the given time into N repetitions and beep at the end of each repetition.
+- ```delaybeep```: after this keyword, a number argument must follow denote the number T. the waitline will wait T seconds, beep, and then will wait the amount of time that was given as the first argument.
 
 ## background music
 

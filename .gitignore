@@ -4,3 +4,4 @@ instructions.txt
 __pycache__/
 pg.ipynb
 .*
+!sfx/*

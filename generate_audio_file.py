@@ -4,8 +4,10 @@ import os
 import scipy.io.wavfile as wf
 import numpy as np
 from music_dispenser import MusicDispenser, WAV_SAMPLE_RATE, normalize_audio, add_repcount_beeps_to_music
+import traceback
 
 bin_delta_time_sec = 1 / WAV_SAMPLE_RATE
+
 
 def generate_audio_signal_from_text(text):
     tts = gTTS(text, lang='en')
@@ -14,7 +16,7 @@ def generate_audio_signal_from_text(text):
     a = wf.read("temp.wav")
     v = np.array(a[1], dtype=np.int16)
     v = normalize_audio(v)
-    return np.vstack([v, v]).T 
+    return np.vstack([v, v]).T
 
 
 def generate_audio_file(music_dispenser: MusicDispenser):
@@ -25,11 +27,11 @@ def generate_audio_file(music_dispenser: MusicDispenser):
             v = generate_audio_signal_from_text(line.text)
             audio_arrays.append(v)
         elif type(line) == WaitLine:
-            audio_time = line.time_seconds + line.delaybeep
+            audio_time = line.time_seconds + line.delaybeep_time
             num_bins = int(audio_time / bin_delta_time_sec)
             v = music_dispenser.get_smooth_music_signal(num_bins)
-            if line.b_beepreps or line.delaybeep >= 0:
-                v = add_repcount_beeps_to_music(v,,)
+            if line.b_beepreps or line.b_delaybeep:
+                v = add_repcount_beeps_to_music(v, line.b_beepreps, line.num_beep_reps, line.b_delaybeep, line.delaybeep_time)
             audio_arrays.append(v)
         else:
             raise Exception("unexpected code path")
@@ -47,6 +49,6 @@ except:
     music_path = input("enter background music path:")
 try:
     generate_audio_file(music_dispenser)
-except Exception as e:
-    print(e.with_traceback(e.__traceback__))
+except Exception:
+    print(traceback.format_exc())
     input()

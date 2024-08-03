@@ -2,6 +2,7 @@ from genericpath import isdir
 import itertools
 import os
 from typing import Iterator, Optional
+import warnings
 import scipy.io.wavfile as wf
 import numpy as np
 
@@ -15,7 +16,6 @@ def convert_file_to_wav(path):
     os.system(f"ffmpeg -y -i \"{path}\" -ar {WAV_SAMPLE_RATE} \"{path_name}.wav\"")
     return f"{path_name}.wav"
 
-def add_repcount_beeps_to_music(music_data,number_of_beeps,initial_delaybeep):
 
 def normalize_audio(data):
     try:
@@ -23,17 +23,48 @@ def normalize_audio(data):
         # measure the loudness first
         meter = pyln.Meter(WAV_SAMPLE_RATE)  # create BS.1770 meter
         data = data.astype(float) / np.max(np.abs(data))
-        loudness = meter.integrated_loudness(data)
+        data_temp = np.copy(data)
+        if len(data_temp) < meter.block_size * WAV_SAMPLE_RATE:
+            data_temp = np.concatenate([data_temp] * (int(meter.block_size * WAV_SAMPLE_RATE / len(data_temp)) + 1))
+        loudness = meter.integrated_loudness(data_temp)
         # loudness normalize audio to -12 dB LUFS
-        data = pyln.normalize.loudness(data, loudness, -12.0)
-    except:
-        print("Warning, pyloudnorm not installed. using rms norm for audio normalization")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            data = pyln.normalize.loudness(data, loudness, -12.0)
+    except ModuleNotFoundError as e:
+        print(f"Warning, pyloudnorm not installed. using rms norm for audio normalization. {e}")
         rms = np.sqrt(np.mean(data.astype(float)**2))
         data = data.astype(float) / rms
     data *= MASTER_VOLUME
     data[np.abs(data) > 2**14] = 2**14
     data = data.astype(np.int16)
     return data
+
+
+# load sfx files
+try:
+    delay_end_sfx = normalize_audio(wf.read(r"sfx\delay_end.wav")[1].astype(np.int16))
+    delay_start_sfx = normalize_audio(wf.read(r"sfx\delay_indicator.wav")[1].astype(np.int16))
+    rep_count_sfx = normalize_audio(wf.read(r"sfx\rep_count.wav")[1].astype(np.int16))
+except Exception as ex:
+    print("WARNING: couldn't load indicator sound effects, Will continue without them.")
+    delay_end_sfx = np.zeros(10, np.int16)
+    delay_start_sfx = np.zeros(10, np.int16)
+    rep_count_sfx = np.zeros(10, np.int16)
+
+
+def add_repcount_beeps_to_music(music_data, b_has_rep_beeps, number_of_beeps, b_has_initial_beep, initial_delaybeep_time):
+    delaybeep_start_index = int(initial_delaybeep_time * WAV_SAMPLE_RATE)
+    if b_has_initial_beep or b_has_rep_beeps:
+        # first repetition beep is the same as delay end beep
+        music_data[delaybeep_start_index:delaybeep_start_index + len(delay_end_sfx)] += delay_end_sfx[:, np.newaxis]
+    if b_has_initial_beep:
+        music_data[:+len(delay_start_sfx)] += delay_start_sfx[:, np.newaxis]
+    if b_has_rep_beeps:
+        beep_indexes = np.linspace(delaybeep_start_index, len(music_data), number_of_beeps + 1, endpoint=True, dtype=int)[1:-1]
+        for i in beep_indexes:
+            music_data[i:i + len(rep_count_sfx)] += rep_count_sfx[:, np.newaxis]
+    return normalize_audio(music_data)
 
 
 class MusicDispenser:

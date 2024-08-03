@@ -1,7 +1,9 @@
 from typing import List
+import re
 
 
 class InstructionLine:
+    original_index: int
     pass
 
 
@@ -12,15 +14,27 @@ class TextLine(InstructionLine):
 class WaitLine(InstructionLine):
     time_seconds: float
     b_countdown: bool
-    b_beepreps: bool # whether or not to indicate repetitions with beeps
+    b_beepreps: bool  # whether or not to indicate repetitions with beeps
     b_announce_time: bool
-    delaybeep: float = -1
+    b_delaybeep: bool
+    delaybeep_time: float = 0
+    num_beep_reps: int = 0
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.time_seconds = False
+        self.b_countdown = False
+        self.b_beepreps = False
+        self.b_announce_time = False
+        self.b_delaybeep = False
+        self.delaybeep_time = 0
+        self.num_beep_reps = 0
 
 
 def read_instructions_file() -> list[InstructionLine]:
     lines = []
     with open("instructions.txt", "r") as f:
-        lines = f.readlines()
+        lines = f.read().replace("\r", "").split("\n")
 
     instructions_list = []
     is_text_line = True
@@ -45,14 +59,19 @@ def read_instructions_file() -> list[InstructionLine]:
                 instruction.b_announce_time = any(["announce_time" in a for a in args])
                 if any(["delaybeep" in a for a in args]):
                     delay_index = args.index("delaybeep")
-                    instruction.delaybeep=float(args[delay_index+1])
+                    instruction.b_delaybeep = True
+                    instruction.delaybeep_time = float(args[delay_index + 1])
                 else:
-                    instruction.delaybeep = -1
+                    instruction.b_delaybeep = False
+                    instruction.delaybeep_time = 0
+                if instruction.b_beepreps:
+                    instruction.num_beep_reps = extract_number_of_repetitions(len(instructions_list) - 1, instructions_list)
+            instruction.original_index = line_index
             instructions_list.append(instruction)
             is_text_line = not is_text_line
         except Exception as e:
             tb = e.__traceback__
-            raise Exception(f"problem with line {line[:-1]}. line number is {line_index}.\n Exception was {e.with_traceback(tb)}")
+            raise Exception(f"problem with line {line[:-1]}. line number is {line_index+1}.\n Exception was {e.with_traceback(tb)}")
     apply_preliminary_keywords(instructions_list)
     # remove empty waits
     instructions_list = [line for line in instructions_list if (type(line) != WaitLine or line.time_seconds != 0)]
@@ -78,19 +97,25 @@ def apply_preliminary_keywords(instructions_list: List[InstructionLine]):
             break
         line = instructions_list[line_index]
         if type(line) == WaitLine:
-            if line.b_countdown:
-                original_time = int(line.time_seconds)
-                del instructions_list[line_index]
-                times: list[int] = [0]  # the times after which countdown happens
-                comments = []  # the texts to be said in the countdowns
-
-                # first announce the total time of the exercise
+            original_time = int(line.time_seconds)
+            if line.b_announce_time or line.b_countdown:
+                # announce time
                 if original_time < 60:
-                    comments.append(f"{original_time} seconds")
+                    time_announcement = f"{original_time} seconds"
                 elif original_time % 60 != 0:
-                    comments.append(f"{int(original_time//60)} minutes {original_time%60} seconds")
+                    time_announcement = f"{int(original_time//60)} minutes {original_time%60} seconds"
                 else:
-                    comments.append(f"{int(original_time//60)} minutes")
+                    time_announcement = f"{int(original_time//60)} minutes"
+                new_line = TextLine()
+                new_line.text = time_announcement
+                instructions_list.insert(line_index, new_line)
+                line_index += 1  # this line is crucial, it keeps line_index and line in sinc.
+                assert (line == instructions_list[line_index])
+                line.b_announce_time = False
+            if line.b_countdown:
+                del instructions_list[line_index]
+                times: list[int] = []  # the times after which countdown happens
+                comments = []  # the texts to be said in the countdowns
 
                 time_left = original_time
                 while time_left != 0:
@@ -127,3 +152,17 @@ def apply_preliminary_keywords(instructions_list: List[InstructionLine]):
                         new_line.text = comments[i]
                         instructions_list.insert(line_index + i * 2 + 1, new_line)
     return instructions_list
+
+
+def extract_number_of_repetitions(current_index, instructions_list):
+    line = instructions_list[current_index]
+    if type(line) != TextLine:
+        raise (Exception(f"Implementation-Bug. inconsistency of type 15986 at line {current_index}"))
+    try:
+        number_of_repetitions = int(re.search(r"\d+", line.text).group())  # extract the first number from last line
+    except:
+        if line.text[:6] == "change" or line.text[:6] == "switch":
+            number_of_repetitions = extract_number_of_repetitions(current_index - 2, instructions_list)
+        else:
+            raise (Exception(f"Error: couldn't find number in line {line.original_index+1} \n{line.text}"))
+    return number_of_repetitions
