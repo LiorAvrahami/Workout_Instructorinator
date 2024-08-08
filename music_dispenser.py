@@ -1,19 +1,23 @@
-from genericpath import isdir
 import itertools
 import os
 from typing import Iterator, Optional
 import warnings
 import scipy.io.wavfile as wf
 import numpy as np
+try:
+    from tqdm import tqdm as pbar
+except:
+    def pbar(arr):
+        print("tqdm not installed, can't print progress. please install tqdm library")
+        return arr
 
 WAV_SAMPLE_RATE = 44100
-MUSIC_VOLUME_MULTIPLIER = 0.7
 MASTER_VOLUME = 10000
 
 
 def convert_file_to_wav(path):
     path_name, ext = os.path.splitext(path)
-    os.system(f"ffmpeg -y -i \"{path}\" -ar {WAV_SAMPLE_RATE} \"{path_name}.wav\"")
+    os.system(f"ffmpeg -y -i \"{path}\" -ar {WAV_SAMPLE_RATE} \"{path_name}_{WAV_SAMPLE_RATE}.wav\" >nul 2>&1")
     return f"{path_name}.wav"
 
 
@@ -55,15 +59,15 @@ except Exception as ex:
 
 def add_repcount_beeps_to_music(music_data, b_has_rep_beeps, number_of_beeps, b_has_initial_beep, initial_delaybeep_time):
     delaybeep_start_index = int(initial_delaybeep_time * WAV_SAMPLE_RATE)
-    if b_has_initial_beep or b_has_rep_beeps:
+    if b_has_initial_beep:
         # first repetition beep is the same as delay end beep
-        music_data[delaybeep_start_index:delaybeep_start_index + len(delay_end_sfx)] += delay_end_sfx[:, np.newaxis]
+        music_data[delaybeep_start_index - len(delay_end_sfx):delaybeep_start_index] += delay_end_sfx[:, np.newaxis]
     if b_has_initial_beep:
         music_data[:+len(delay_start_sfx)] += delay_start_sfx[:, np.newaxis]
     if b_has_rep_beeps:
-        beep_indexes = np.linspace(delaybeep_start_index, len(music_data), number_of_beeps + 1, endpoint=True, dtype=int)[1:-1]
+        beep_indexes = np.linspace(delaybeep_start_index, len(music_data), number_of_beeps + 1, endpoint=True, dtype=int)[0:-1]
         for i in beep_indexes:
-            music_data[i:i + len(rep_count_sfx)] += rep_count_sfx[:, np.newaxis]
+            music_data[i:i + len(rep_count_sfx)] += (rep_count_sfx[:, np.newaxis] * 1.7).astype(np.int16)
     return normalize_audio(music_data)
 
 
@@ -83,9 +87,15 @@ class MusicDispenser:
 
     def __init_from_dir(self, path: str):
         musics = os.listdir(path)
-        for p in musics:
+        for p in pbar(musics):
+            # check if file has already converted version
+            p_name, _ = os.path.splitext(p)
+            if p_name + f"_{WAV_SAMPLE_RATE}.wav" in musics:
+                continue
+            if f"_{WAV_SAMPLE_RATE}.wav" in p:
+                continue
             convert_file_to_wav(os.path.join(path, p))
-        musics = [os.path.join(path, p) for p in os.listdir(path) if ".wav" in p]
+        musics = [os.path.join(path, p) for p in os.listdir(path) if f"_{WAV_SAMPLE_RATE}.wav" in p]
         self.music_file_iter = itertools.cycle(musics)
 
     def __init_from_file(self, path: str):
@@ -96,7 +106,7 @@ class MusicDispenser:
         while self.current_signal_arr is None or self.current_index_in_signal >= len(self.current_signal_arr):
             path = next(self.music_file_iter)
             a = wf.read(path)
-            self.current_signal_arr = np.array(a[1] * MUSIC_VOLUME_MULTIPLIER, dtype=np.int16)
+            self.current_signal_arr = np.array(a[1], dtype=np.int16)
             self.current_signal_arr = normalize_audio(self.current_signal_arr)
             self.current_index_in_signal = 0
         ret = self.current_signal_arr[self.current_index_in_signal:self.current_index_in_signal + num_bins]

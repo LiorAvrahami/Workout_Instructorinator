@@ -101,11 +101,11 @@ def apply_preliminary_keywords(instructions_list: List[InstructionLine]):
             if line.b_announce_time or line.b_countdown:
                 # announce time
                 if original_time < 60:
-                    time_announcement = f"{original_time} seconds"
+                    time_announcement = f"for {original_time} seconds"
                 elif original_time % 60 != 0:
-                    time_announcement = f"{int(original_time//60)} minutes {original_time%60} seconds"
+                    time_announcement = f"for {int(original_time//60)} minutes {original_time%60} seconds"
                 else:
-                    time_announcement = f"{int(original_time//60)} minutes"
+                    time_announcement = f"for {int(original_time//60)} minutes"
                 new_line = TextLine()
                 new_line.text = time_announcement
                 instructions_list.insert(line_index, new_line)
@@ -127,7 +127,7 @@ def apply_preliminary_keywords(instructions_list: List[InstructionLine]):
                         times.append(time_left - 60)
                         time_left -= times[-1]
                         comments.append(f"1 minute")
-                    elif time_left >= 55:
+                    elif time_left >= 45:
                         times.append(time_left - 30)
                         time_left -= times[-1]
                         comments.append(f"30 seconds")
@@ -146,10 +146,18 @@ def apply_preliminary_keywords(instructions_list: List[InstructionLine]):
                     new_line = WaitLine()
                     new_line.time_seconds = times[i]
                     new_line.b_countdown = False
+                    new_line.original_index = line.original_index
+                    new_line.b_announce_time = False
+                    new_line.b_beepreps = False
+                    new_line.num_beep_reps = False
+                    if i == 0:
+                        new_line.b_delaybeep = line.b_delaybeep
+                        new_line.delaybeep_time = line.delaybeep_time
                     instructions_list.insert(line_index + i * 2, new_line)
                     if i < len(comments):
                         new_line = TextLine()
                         new_line.text = comments[i]
+                        new_line.original_index = line.original_index
                         instructions_list.insert(line_index + i * 2 + 1, new_line)
     return instructions_list
 
