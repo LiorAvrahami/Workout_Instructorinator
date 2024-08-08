@@ -40,7 +40,7 @@ def normalize_audio(data):
         rms = np.sqrt(np.mean(data.astype(float)**2))
         data = data.astype(float) / rms
     data *= MASTER_VOLUME
-    data[np.abs(data) > 2**14] = 2**14
+    data[np.abs(data) > 2**14] = 2**14 * np.sign(data[np.abs(data) > 2**14])
     data = data.astype(np.int16)
     return data
 
@@ -60,10 +60,13 @@ except Exception as ex:
 def add_repcount_beeps_to_music(music_data, b_has_rep_beeps, number_of_beeps, b_has_initial_beep, initial_delaybeep_time):
     delaybeep_start_index = int(initial_delaybeep_time * WAV_SAMPLE_RATE)
     if b_has_initial_beep:
-        # first repetition beep is the same as delay end beep
-        music_data[delaybeep_start_index - len(delay_end_sfx):delaybeep_start_index] += delay_end_sfx[:, np.newaxis]
-    if b_has_initial_beep:
-        music_data[:+len(delay_start_sfx)] += delay_start_sfx[:, np.newaxis]
+        try:
+            music_data[delaybeep_start_index - len(delay_end_sfx):delaybeep_start_index] += delay_end_sfx[:, np.newaxis]
+            music_data[:len(delay_start_sfx)] += delay_start_sfx[:, np.newaxis]
+        except:
+            # delay is too small. makes no sense to aks for such small delay, thus skipping delay-beep
+            pass
+
     if b_has_rep_beeps:
         beep_indexes = np.linspace(delaybeep_start_index, len(music_data), number_of_beeps + 1, endpoint=True, dtype=int)[0:-1]
         for i in beep_indexes:
