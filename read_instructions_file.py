@@ -9,6 +9,11 @@ class InstructionLine:
 
 class TextLine(InstructionLine):
     text: str
+    b_new_chapter: bool
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.b_new_chapter = False
 
 
 class WaitLine(InstructionLine):
@@ -45,6 +50,7 @@ def read_instructions_file() -> list[InstructionLine]:
             if is_text_line:
                 instruction = TextLine()
                 instruction.text = line
+                instruction.b_new_chapter = True
             else:
                 instruction = WaitLine()
                 args = line.replace(" ", "").split(",")
