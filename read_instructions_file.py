@@ -1,5 +1,8 @@
 from typing import List
 import re
+import os
+
+SETS_FOLDER_NAME = "Sets"
 
 
 class InstructionLine:
@@ -10,10 +13,12 @@ class InstructionLine:
 class TextLine(InstructionLine):
     text: str
     b_new_chapter: bool
+    set_name: str
 
     def __init__(self) -> None:
         super().__init__()
         self.b_new_chapter = False
+        self.set_name = ""
 
 
 class WaitLine(InstructionLine):
@@ -36,9 +41,19 @@ class WaitLine(InstructionLine):
         self.num_beep_reps = 0
 
 
-def read_instructions_file() -> list[InstructionLine]:
+def apply_set_file(set_name):
+    set_file_name = f"{os.path.join(SETS_FOLDER_NAME,set_name)}.txt"
+    instructions_list = read_instructions_file(set_file_name)
+    for i in range(len(instructions_list)):
+        instruction_line = instructions_list[i]
+        if type(instruction_line) is TextLine:
+            instruction_line.set_name = set_name
+    return instructions_list
+
+
+def read_instructions_file(instructions_file_name) -> list[InstructionLine]:
     lines = []
-    with open("instructions.txt", "r") as f:
+    with open(instructions_file_name, "r") as f:
         lines = f.read().replace("\r", "").split("\n")
 
     instructions_list = []
@@ -46,6 +61,10 @@ def read_instructions_file() -> list[InstructionLine]:
     for line_index, line in enumerate(lines):
         try:
             if line[0] == "#":
+                continue
+            if line[0] == "$":
+                set_instructions_list = apply_set_file(line[1:])
+                instructions_list += set_instructions_list
                 continue
             if is_text_line:
                 instruction = TextLine()

@@ -38,15 +38,17 @@ def generate_audio_signal_from_text(text):
         return ret
 
 
-def generate_audio_file(music_dispenser: MusicDispenser):
+def generate_audio_file(instructions_file_name: str, music_dispenser: MusicDispenser):
     total_time = 0
     audio_arrays = []
     chapter_times = []
-    instructions_list = read_instructions_file()
+    chapter_names_base = []
+    instructions_list = read_instructions_file(instructions_file_name)
     for line in pbar(instructions_list):
         if type(line) == TextLine:
             if line.b_new_chapter:
                 chapter_times.append(total_time)
+                chapter_names_base.append(line.set_name)
             v = generate_audio_signal_from_text(line.text)
             audio_arrays.append(v)
             total_time += len(v) / WAV_SAMPLE_RATE
@@ -62,12 +64,13 @@ def generate_audio_file(music_dispenser: MusicDispenser):
             raise Exception("unexpected code path")
 
     chapter_times.append(total_time)
+    chapter_names_base.append(None)
     wf.write("temp_out.wav", WAV_SAMPLE_RATE, np.concatenate(audio_arrays))
-    make_metadata_file(chapter_times)
-    os.system(f"ffmpeg -y -i temp_out.wav -i {META_DATA_FILE_NAME} -map 0 -map_metadata 1 out_put_instructions_file.m4b")
+    make_metadata_file(chapter_times, chapter_names_base)
+    os.system(f"ffmpeg -v quiet -stats -y -i temp_out.wav -i {META_DATA_FILE_NAME} -map 0 -map_metadata 1 out_put_instructions_file.m4b")
 
 
-def make_metadata_file(chapter_times):
+def make_metadata_file(chapter_times, chapter_names_base):
     with open(META_DATA_FILE_NAME, "w+") as metadata_file:
         metadata_file.write(";FFMETADATA1\ntitle=Your Workout\nartist=Lior's Workout Instructinator\n\n")
         for i, (chapter_time_start, chapter_time_end) in enumerate(zip(chapter_times[:-1], chapter_times[1:])):
@@ -76,19 +79,36 @@ def make_metadata_file(chapter_times):
                 "TIMEBASE=1/1000\n"
                 f"START={chapter_time_start*1000}\n"
                 f"END={chapter_time_end*1000}\n"
-                f"title={i}\n\n"
+                f"title={chapter_names_base[i]} {i}\n\n"
             )
 
 
+def inquire_input_path(query, default):
+    try:
+        import efipy
+        path = efipy.inquire_input_path(query, default=default)
+    except:
+        path = input(query)
+    return path
+
+
+import sys
+if len(sys.argv) >= 2:
+    # instruction file passed as parameter
+    instructions_file_names_arr = sys.argv[1:]
+elif len(sys.argv) == 1:
+    # ask user for instruction file
+    instructions_file_names_arr = [inquire_input_path("enter instruction file path:", default="instructions.txt")]
+
+# Ask User For Music Files
 music_dispenser = MusicDispenser()
-try:
-    import efipy
-    music_path = efipy.inquire_input_path("enter background music path:", default="songs")
-    music_dispenser.init_from_path(music_path)
-except:
-    music_path = input("enter background music path:")
-try:
-    generate_audio_file(music_dispenser)
-except Exception:
-    print(traceback.format_exc())
-    input()
+music_path = inquire_input_path("enter background music path:", default="songs")
+music_dispenser.init_from_path(music_path)
+
+for instructions_file_name in instructions_file_names_arr:
+    try:
+        generate_audio_file(instructions_file_name, music_dispenser)
+    except Exception:
+        print(traceback.format_exc())
+        input()
+        break

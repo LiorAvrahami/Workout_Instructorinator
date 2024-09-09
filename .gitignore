@@ -5,3 +5,6 @@ __pycache__/
 pg.ipynb
 .*
 !sfx/*
+*.txt
+!TODO.txt
+*.m4b

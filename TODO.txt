@@ -1,0 +1,2 @@
+implement Sets.
+- instruction files in Sets Folder, for example if Abs.txt is inside Sets, and is referenced inside instructions.txt, then the referance will be replaced with the contents of Abs.txt
