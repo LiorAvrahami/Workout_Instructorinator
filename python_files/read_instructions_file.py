@@ -1,6 +1,9 @@
+from random import choice
 from typing import List
 import re
 import os
+
+from python_files.speaker import Speaker
 
 SETS_FOLDER_NAME = "Sets"
 
@@ -14,17 +17,20 @@ class TextLine(InstructionLine):
     text: str
     b_new_chapter: bool
     set_name: str
+    speaker: Speaker
 
     def __init__(self) -> None:
         super().__init__()
         self.b_new_chapter = False
         self.set_name = ""
+        self.speaker = get_current_speaker()
 
 
 class WaitLine(InstructionLine):
     time_seconds: float
     b_countdown: bool
     b_beepreps: bool  # whether or not to indicate repetitions with beeps
+    b_until_end_of_song: bool  # if is true then duration is at least until end of song
     b_announce_time: bool
     b_delaybeep: bool
     delaybeep_time: float = 0
@@ -39,14 +45,98 @@ class WaitLine(InstructionLine):
         self.b_delaybeep = False
         self.delaybeep_time = 0
         self.num_beep_reps = 0
+        self.b_until_end_of_song = False
+
+    def isempty(self):
+        return (self.time_seconds == 0) and (self.b_until_end_of_song == False)
 
 
-def apply_set_file(set_name):
+SetChoices = {}
+
+
+def choose_set_from_list(set_names_list):
+    # make list names hashable and not order dependent
+    set_names_list = tuple(set(set_names_list))
+
+    if set_names_list in SetChoices:
+        return SetChoices[set_names_list]
+    elif len(set_names_list) == 1:
+        return set_names_list[0]
+    print("\nInput Required:\n choose a set from this list. input the number of the chosen set")
+    print(*[f"{i}) {set_names_list[i]}\n" for i in range(len(set_names_list))])
+    while True:
+        try:
+            ret = set_names_list[int(input())]
+            break
+        except:
+            pass
+    SetChoices[set_names_list] = ret
+    print(ret)
+    return ret
+
+
+current_active_speaker: Speaker = None
+
+
+def set_current_speaker(speaker: Speaker):
+    global current_active_speaker
+    current_active_speaker = speaker
+
+
+def get_current_speaker() -> Speaker:
+    global current_active_speaker
+    if current_active_speaker is not None:
+        return current_active_speaker
+    else:
+        try:
+            from safer_prompt_toolkit import prompt
+        except ImportError:
+            from prompt_toolkit import prompt
+        from prompt_toolkit.completion import WordCompleter
+
+        # Create a WordCompleter
+        list_completer = WordCompleter([a + ":x1.0" for a in Speaker.accent_options], ignore_case=True)
+        # Prompt with the completer
+        selected_speaker = None
+        while selected_speaker is None:
+            selected_speaker_str = prompt("Select speaker followed by talking speed:\n", completer=list_completer, default="us:x1.0")
+            try:
+                selected_speaker = Speaker.from_str(selected_speaker_str)
+            except:
+                print(
+                    f"Error parsing speaker. please select a legal accent:\n{Speaker.accent_options}, followed by speed. for example us:x1.0")
+        current_active_speaker = selected_speaker
+    return current_active_speaker
+
+
+def define_Set_choice(set_names, choise):
+    set_names = os.path.join(*set_names.split("\\"))
+    set_names = os.path.join(*set_names.split("/"))
+    set_names_list = set_names.split("|")
+    set_names_list = tuple(set(set_names_list))
+    SetChoices[set_names_list] = choise
+
+
+def apply_set_file(set_names):
+    # canonicalize path delimiter across operating systems
+    set_names = os.path.join(*set_names.split("\\"))
+    set_names = os.path.join(*set_names.split("/"))
+    set_names_list = set_names.split("|")
+    set_name = choose_set_from_list(set_names_list)
+
+    if set_name in "None" or set_name == "none":
+        return []
+
+    # find file:
     set_file_name = f"{os.path.join(SETS_FOLDER_NAME,set_name)}.txt"
+
+    if not os.path.exists(set_file_name):
+        raise Exception(f"set file not found {set_file_name}")
+
     instructions_list = read_instructions_file(set_file_name)
     for i in range(len(instructions_list)):
         instruction_line = instructions_list[i]
-        if type(instruction_line) is TextLine:
+        if type(instruction_line) is TextLine and instruction_line.set_name == "":
             instruction_line.set_name = set_name
     return instructions_list
 
@@ -60,11 +150,19 @@ def read_instructions_file(instructions_file_name) -> list[InstructionLine]:
     is_text_line = True
     for line_index, line in enumerate(lines):
         try:
-            if line[0] == "#":
+            if len(line) == 0 or line[0] == "#":
+                continue
+            if line[0] == "@":
+                set_instructions_list = apply_set_file(line[1:].replace(" ", ""))
+                instructions_list += set_instructions_list
                 continue
             if line[0] == "$":
-                set_instructions_list = apply_set_file(line[1:])
-                instructions_list += set_instructions_list
+                if "$ speaker:" in str.lower(line):
+                    speaker = Speaker.from_str(line[len("$ speaker:"):].replace(" ", ""))
+                    set_current_speaker(speaker)
+                else:
+                    list, choice = line[1:].replace(" ", "").split("->")
+                    define_Set_choice(list, choice)
                 continue
             if is_text_line:
                 instruction = TextLine()
@@ -81,6 +179,7 @@ def read_instructions_file(instructions_file_name) -> list[InstructionLine]:
                 instruction.time_seconds = min * 60 + sec
                 instruction.b_countdown = "countdown" in args
                 instruction.b_beepreps = "beepreps" in args
+                instruction.b_until_end_of_song = "until_end_of_song" in args
                 instruction.b_announce_time = any(["announce_time" in a for a in args])
                 if any(["delaybeep" in a for a in args]):
                     delay_index = args.index("delaybeep")
@@ -99,7 +198,7 @@ def read_instructions_file(instructions_file_name) -> list[InstructionLine]:
             raise Exception(f"problem with line {line[:-1]}. line number is {line_index+1}.\n Exception was {e.with_traceback(tb)}")
     apply_preliminary_keywords(instructions_list)
     # remove empty waits
-    instructions_list = [line for line in instructions_list if (type(line) != WaitLine or line.time_seconds != 0)]
+    instructions_list = [line for line in instructions_list if (type(line) != WaitLine or not line.isempty())]
     # merge consecutive instruction lines and remove "\n"'s
     line_index = 0
     while line_index < len(instructions_list) - 1:

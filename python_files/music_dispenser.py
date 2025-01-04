@@ -2,7 +2,7 @@ import itertools
 import os
 from typing import Iterator, Optional
 import warnings
-import scipy.io.wavfile as wf
+import python_files.wav_read_write as wf
 import numpy as np
 try:
     from tqdm import tqdm as pbar
@@ -76,42 +76,63 @@ def add_repcount_beeps_to_music(music_data, b_has_rep_beeps, number_of_beeps, b_
 
 class MusicDispenser:
     music_file_iter: Iterator
+    music_files_list: list
 
     current_signal_arr: Optional[np.ndarray] = None
     current_index_in_signal: int = 0
 
+    def init_from_path_arr(self, paths: list[str]):
+        self.music_files_list = []
+        self.current_signal_arr: Optional[np.ndarray] = None
+        self.current_index_in_signal: int = 0
+        for p in paths:
+            self.add_path_to_music_list(p)
+
     def init_from_path(self, path: str):
+        self.music_files_list = []
+        self.current_signal_arr: Optional[np.ndarray] = None
+        self.current_index_in_signal: int = 0
+        self.init_from_path_arr([path])
+
+    def add_path_to_music_list(self, path):
         if not os.path.exists(path):
             raise Exception("path not found")
         if os.path.isdir(path):
-            self.__init_from_dir(path)
+            self.add_dir_to_music_list(path)
         else:
-            self.__init_from_file(path)
+            self.add_file_to_music_list(path)
 
-    def __init_from_dir(self, path: str):
-        musics = os.listdir(path)
+    def add_dir_to_music_list(self, dir_path: str):
+        musics = os.listdir(dir_path)
         for p in pbar(musics):
             # check if file has already converted version
             p_name, _ = os.path.splitext(p)
             if p_name + f"_{WAV_SAMPLE_RATE}.wav" in musics:
                 continue
-            if f"_{WAV_SAMPLE_RATE}.wav" in p:
-                continue
-            convert_file_to_wav(os.path.join(path, p))
-        musics = [os.path.join(path, p) for p in os.listdir(path) if f"_{WAV_SAMPLE_RATE}.wav" in p]
-        self.music_file_iter = itertools.cycle(musics)
+            self.add_file_to_music_list(os.path.join(dir_path, p))
 
-    def __init_from_file(self, path: str):
-        path = convert_file_to_wav(path)
-        self.music_file_iter = itertools.cycle([path])
+    def add_file_to_music_list(self, path: str):
+        if f"_{WAV_SAMPLE_RATE}.wav" not in path:
+            path = convert_file_to_wav(path)
+        self.music_files_list.append(path)
+        self.music_file_iter = itertools.cycle(self.music_files_list)
 
-    def get_music_signal(self, num_bins):
+    def load_next_song_if_needed(self):
         while self.current_signal_arr is None or self.current_index_in_signal >= len(self.current_signal_arr):
             path = next(self.music_file_iter)
             a = wf.read(path)
             self.current_signal_arr = np.array(a[1], dtype=np.int16)
             self.current_signal_arr = normalize_audio(self.current_signal_arr)
             self.current_index_in_signal = 0
+
+    def get_number_of_bins_left_to_end_of_song(self):
+        self.load_next_song_if_needed()
+        assert (self.current_signal_arr is not None)
+        return len(self.current_signal_arr) - self.current_index_in_signal
+
+    def get_music_signal(self, num_bins):
+        self.load_next_song_if_needed()
+        assert (self.current_signal_arr is not None)
         ret = self.current_signal_arr[self.current_index_in_signal:self.current_index_in_signal + num_bins]
         self.current_index_in_signal += num_bins
         if len(ret) < num_bins:
@@ -120,7 +141,9 @@ class MusicDispenser:
             ret = np.concatenate([ret, ret2])
         return ret
 
-    def get_smooth_music_signal(self, num_bins):
+    def get_smooth_music_signal(self, num_bins, b_until_end_of_song):
+        if b_until_end_of_song:
+            num_bins = max(num_bins, self.get_number_of_bins_left_to_end_of_song())
         signal = self.get_music_signal(num_bins)
         # make paket
         paket = np.ones(signal.shape)
