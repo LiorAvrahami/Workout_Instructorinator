@@ -1,3 +1,4 @@
+from python_files.ffmpeg_name_file import ffmpeg_name
 from python_files.read_instructions_file import *
 from gtts import gTTS
 import os
@@ -27,7 +28,7 @@ def __generate_audio_signal_from_text_priv(text, speaker: Speaker):
         # export to mp3
         final.export("temp.mp3", format="mp3")
 
-    os.system(f"ffmpeg -y -i temp.mp3 -ar {WAV_SAMPLE_RATE} temp.wav >nul 2>&1")
+    os.system(f"{ffmpeg_name} -y -i temp.mp3 -ar {WAV_SAMPLE_RATE} temp.wav >nul 2>&1")
     a = wf.read("temp.wav")
     v = np.array(a[1], dtype=np.int16)
     v = normalize_audio(v)
@@ -78,7 +79,7 @@ def generate_audio_file(instructions_file_name: str, music_dispenser: MusicDispe
     chapter_times, chapter_names_base = truncate_tiny_chapters(chapter_times, chapter_names_base)
     make_metadata_file(chapter_times, chapter_names_base)
     os.system(
-        f"ffmpeg -loglevel error -stats -y -i temp_out.wav -i {META_DATA_FILE_NAME} -map 0 -map_metadata 1 {os.path.splitext(instructions_file_name)[0]}.m4b")
+        f"{ffmpeg_name} -loglevel error -stats -y -i temp_out.wav -i {META_DATA_FILE_NAME} -map 0 -map_metadata 1 {os.path.splitext(instructions_file_name)[0]}.m4b")
 
 
 def truncate_tiny_chapters(chapter_times, chapter_names_base):
@@ -144,3 +145,12 @@ for instructions_file_name in instructions_file_names_arr:
         print(traceback.format_exc())
         input()
         break
+
+if os.path.exists("temp_out.wav"):
+    os.remove("temp_out.wav")
+if os.path.exists("temp.mp3"):
+    os.remove("temp.mp3")
+if os.path.exists("temp.wav"):
+    os.remove("temp.wav")
+if os.path.exists("temp_metadata.txt"):
+    os.remove("temp_metadata.txt")

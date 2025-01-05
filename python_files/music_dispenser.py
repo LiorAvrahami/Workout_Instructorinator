@@ -1,3 +1,4 @@
+from python_files.ffmpeg_name_file import ffmpeg_name
 import itertools
 import os
 from typing import Iterator, Optional
@@ -17,8 +18,8 @@ MASTER_VOLUME = 10000
 
 def convert_file_to_wav(path):
     path_name, ext = os.path.splitext(path)
-    os.system(f"ffmpeg -y -i \"{path}\" -ar {WAV_SAMPLE_RATE} \"{path_name}_{WAV_SAMPLE_RATE}.wav\" >nul 2>&1")
-    return f"{path_name}.wav"
+    os.system(f"{ffmpeg_name} -y -i \"{path}\" -ar {WAV_SAMPLE_RATE} \"{path_name}_{WAV_SAMPLE_RATE}.wav\" >nul 2>&1")
+    return f"{path_name}_{WAV_SAMPLE_RATE}.wav"
 
 
 def normalize_audio(data):

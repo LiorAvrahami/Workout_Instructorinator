@@ -27,7 +27,7 @@ and then you will be asked to choose a speaker. see [speaker preferences](#speak
 ## requirments
 
 - works for me on `python 3.10.1`
-- packages required: `scipy`, `numpy`, `pyloadnorm` and `gTTs`. all can be downloaded via pip.  
+- packages required: `scipy`, `numpy`, `pyloadnorm`, `pydub`, and `gTTs`. all can be downloaded via pip.  
 (also `efipy` and `tqdm` are optional packages for making the program easier to use)
 - ffmpeg should run from your command line.  
     you can check if you have ffmpeg on your command line by opening the command terminal (cmd on windows) and entering `ffmpeg -h`.  
